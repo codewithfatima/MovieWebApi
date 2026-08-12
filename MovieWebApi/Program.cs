@@ -101,9 +101,9 @@ var app = builder.Build();
 // HTTP Pipeline
 if (app.Environment.IsDevelopment())
 {
+}
     app.UseSwagger();
     app.UseSwaggerUI();
-}
 
 app.UseHttpsRedirection();
 
