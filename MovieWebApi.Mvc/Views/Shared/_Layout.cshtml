@@ -1,0 +1,183 @@
+﻿@{
+    var token = Context.Request.Cookies["jwt"];
+
+    var isAdmin = false;
+
+    if (!string.IsNullOrEmpty(token))
+    {
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jwtToken = handler.ReadJwtToken(token);
+        var role = jwtToken.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+        isAdmin = role == "Admin";
+    }
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - MovieWebApi.Mvc</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/MovieWebApi.Mvc.styles.css" asp-append-version="true" />
+</head>
+<style>
+    :root {
+        --bg-color: #f4f6fb;
+        --card-bg: #ffffff;
+        --text-color: #1a1a1a;
+        --border-color: #e0e0e0;
+        --accent: #4361ee;
+    }
+
+    [data-theme="dark"] {
+        --bg-color: #12141c;
+        --card-bg: #1c1f2b;
+        --text-color: #e8e8e8;
+        --border-color: #2c2f3a;
+        --accent: #6c8cff;
+    }
+
+    body {
+        background: var(--bg-color);
+        color: var(--text-color);
+        min-height: 100vh;
+        transition: background 0.3s ease, color 0.3s ease;
+        position: relative;
+        overflow-x: hidden;
+    }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 30%, var(--accent) 0%, transparent 40%), radial-gradient(circle at 80% 70%, var(--accent) 0%, transparent 40%);
+            opacity: 0.08;
+            z-index: -1;
+            animation: drift 20s ease-in-out infinite alternate;
+        }
+
+    @@keyframes drift {
+        0% {
+            transform: translate(0, 0) rotate(0deg);
+        }
+
+        100% {
+            transform: translate(5%, 5%) rotate(10deg);
+        }
+    }
+
+    .card, .table {
+        background: var(--card-bg) !important;
+        color: var(--text-color) !important;
+        border-color: var(--border-color) !important;
+    }
+
+    .table-hover tbody tr:hover {
+        background: var(--border-color) !important;
+    }
+</style>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark bg-black text-white border-bottom box-shadow mb-3 ">
+            <div class="container-fluid">
+                <!-- Brand -->
+                <a class="navbar-brand" asp-area="" asp-controller="Movie" asp-action="Index">MovieWebApi.Mvc</a>
+
+                <!-- Mobile Toggle Button -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Collapsible Wrapper -->
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <!-- Nav Links -->
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link text-white" asp-area="" asp-controller="Movie" asp-action="Index">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                        </li>
+
+                        @if (isAdmin)
+                        {
+                            <!--Admin dropdown -->
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-white px-2" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Admin
+                                </a>
+
+                                <ul class="dropdown-menu dropdown-menu-dark text-white ">
+                                    <li><a class="dropdown-item" asp-controller="Genre" asp-action="Index">Genre </a></li>
+
+                                    <li><a class="dropdown-item" asp-controller="Genre" asp-action="Index">Genre </a></li>
+                                </ul>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+          
+            <!-- Theme Toggle & Logout Buttons -->
+            <div class="d-flex align-items-center gap-2 ms-2">
+
+                <button id="theme-toggle" class="btn btn-sm btn-outline-light rounded-pill px-3" type="button">
+                    <span id="theme-icon">⚡</span> 
+                </button>
+
+                <form asp-controller="Auth" asp-action="Logout" method="post" class="d-inline ms-2">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary text-white ms-rg-5">Logout</button>
+                </form>
+            </div>
+
+        </nav>
+    </header>
+    <div class="container-fluid">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; 2026 - MovieWebApi.Mvc - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
+
+<script>
+    const toggleBtn = document.getElementById('theme-toggle');
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    toggleBtn.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+    });
+</script>
+
+
+<script>
+    setTimeout(() => {
+        const alert = document.getElementById('success-alert');
+        if (alert) {
+            alert.style.transition = 'opacity 0.5s ease';
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500);
+        }
+    }, 3000);
+</script>

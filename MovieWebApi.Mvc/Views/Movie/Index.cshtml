@@ -1,0 +1,145 @@
+﻿@model List<MovieWebApi.Mvc.Models.MovieViewModel>
+
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+
+
+<div class="container-fluid mt-3">
+        <div class="d-flex justify-content-between align-items-center mb-4 ">
+        <h2 class="mb-0 text-secondary">Movie</h2>
+        <a asp-action="Create" class="btn btn-primary PX-4"> + Add Movie</a>
+        </div>
+
+    <form asp-controller="Movie" asp-action="Index" method="get" class="d-flex gap-2 my-4">
+        <input type="search" name="search" class="form-control" style="max-width: 350px;" placeholder="Search by title" value="@Context.Request.Query["search"]" />
+            @{
+            var currentStatus = Context.Request.Query["status"].ToString();
+              }
+
+        <select name="status" class="form-select">
+            <option value="">All Status</option>
+            <option value="0" selected="@(currentStatus == "0")">Active</option>
+            <option value="1" selected="@(currentStatus == "1")">Postponed</option>
+            <option value="2" selected="@(currentStatus == "2")">Cancelled</option>
+        </select>
+
+            <button class="btn btn-primary flex-fill" type="submit">Search</button>
+            <a asp-action="Index" class="btn btn-outline-secondary" type="submit">Clear</a>
+
+    </form>
+
+
+    <div class="card shadow-sm border-0 rounded-3">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Id</th>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>RealeaseDate</th>
+                        <th>Status</th>
+                    <th>Rating</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                    @foreach(var movie in Model)
+                    {
+                        <tr>
+                            <td>@movie.Id</td>
+                            <td class="text-center">@movie.Title</td>
+                            <td class="description">@movie.Description</td>
+                            <td>@movie.ReleaseDate</td>
+                            <td>
+                                @{
+                                    var (statusText, statusClass) = movie.Status switch
+                                    {
+                                        0 => ("Active", "bg-success"),
+                                        1 => ("Postponed", "bg-warning text-dark"),
+                                        2 => ("Cancelled", "bg-secondary"),
+                                    };
+                                }
+                                <span class="badge @statusClass">@statusText</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-success">@movie.Rating</span>
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="Edit" asp-route-id="@movie.Id" class="btn btn-sm btn-outline-secondary me-1">Edit</a>
+                                @if (ViewBag.IsAdmin)
+                                {
+                                    <form asp-action="Delete" asp-route-id="@movie.Id" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this movie?');">
+                                            Delete
+                                        </button>
+                                    </form>
+                                }
+                                <form asp-action="Duplicate" asp-route-id="@movie.Id" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-success" onclick="return confirm('Are you sure you want to Duplicate this movie?');">
+                                        Duplicate
+                                    </button>
+                                </form>
+
+
+                            </td>
+                        </tr>
+            }
+              
+            </tbody>
+
+        </table>
+
+          
+    </div>
+    </div>
+
+
+    </div>
+
+@* paingation *@
+
+@if (ViewBag.TotalPages > 1)
+{
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(ViewBag.CurrentPage <= 1 ? "disabled" : "")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-search="@Context.Request.Query["search"]"
+                   asp-route-status="@Context.Request.Query["status"]"
+                   asp-route-pageNumber="@(ViewBag.CurrentPage - 1)">
+                    Previous
+                </a>
+            </li>
+
+            @for (int i = 1; i <= ViewBag.TotalPages; i++)
+            {
+                <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                    <a class="page-link"
+                       asp-action="Index"
+                       asp-route-search="@Context.Request.Query["search"]"
+                       asp-route-status="@Context.Request.Query["status"]"
+                       asp-route-pageNumber="@i">
+                        @i
+                    </a>
+                </li>
+            }
+
+            <li class="page-item @(ViewBag.CurrentPage >= ViewBag.TotalPages ? "disabled" : "")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-search="@Context.Request.Query["search"]"
+                   asp-route-status="@Context.Request.Query["status"]"
+                   asp-route-pageNumber="@(ViewBag.CurrentPage + 1)">
+                    Next
+                </a>
+            </li>
+        </ul>
+    </nav>
+}

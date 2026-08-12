@@ -1,0 +1,57 @@
+﻿@model MovieWebApi.Mvc.Models.MovieViewModel
+
+@{
+    ViewData["Title"] = "Edit Movie";
+
+
+}
+<h2>Edit Movie</h2>
+
+<form asp-action="Edit" method="post">
+    <!-- Hidden field to keep track of the movie ID during postback -->
+    <input type="hidden" asp-for="Id" />
+
+    <div class="form-group mb-3">
+        <label asp-for="Title" class="control-label"></label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Description" class="control-label"></label>
+        <textarea asp-for="Description" class="form-control"></textarea>
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="ReleaseDate" class="control-label"></label>
+        <input asp-for="ReleaseDate" type="date" class="form-control" />
+        <span asp-validation-for="ReleaseDate" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Rating" class="control-label"></label>
+        <input asp-for="Rating" type="number" class="form-control" />
+        <span asp-validation-for="Rating" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Status" class="from-label"></label>
+     <select asp-for="Status" class="form-select">
+         <option value="">All</option>
+         <option value="0">Active</option>
+         <option value="1">Postponed</option>
+         <option value="2">Cancelled</option>
+     </select>
+    </div>
+
+
+    <div class="form-group mb-3">
+        <label asp-for="GenreId" class="control-label"></label>
+        <input asp-for="GenreId" type="number" class="form-control" />
+        <span asp-validation-for="GenreId" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>
