@@ -20,3 +20,4 @@ WORKDIR /app
 COPY --from=build /app/out .
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 ENTRYPOINT ["dotnet", "MovieWebApi.Mvc.dll"]
+
