@@ -36,7 +36,7 @@ namespace MovieWebApi.Mvc.Controllers
 
             var responseJson = await response.Content.ReadAsStringAsync(); // take api reply and read its  body as p[lain text 
             var result = JsonSerializer.Deserialize<Dictionary<string, string>>(responseJson, new JsonSerializerOptions
-            { // means JsonSerializer.Deserialize take ke some JSON text and build a real C# object from it. 
+            { 
                 PropertyNameCaseInsensitive = true
             });
             var token = result["token"];
@@ -51,9 +51,15 @@ namespace MovieWebApi.Mvc.Controllers
             TempData["Success"] = "Login successful.";
             return RedirectToAction("Index", "Movie");
         }
-
         [HttpGet]
-        public IActionResult Register() { return View(); }
+        public IActionResult Register()
+        {
+            return View();
+        }
+
+
+        [HttpPost]
+        
         public async Task<IActionResult> Register(RegisterViewModel model)
         {
             var client = _httpClientFactory.CreateClient("MovieWebApi");

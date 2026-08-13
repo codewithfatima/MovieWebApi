@@ -36,13 +36,24 @@ namespace MovieWebApi.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto)
         {
-            var token =  await _authService.LoginAsync(dto);
-
-            if (token == null)
+            try
             {
-                return Unauthorized(new { message = "Invalid email or password" });
+                var token = await _authService.LoginAsync(dto);
+
+                if (token == null)
+                {
+                    return Unauthorized(new { message = "Invalid email or password" });
+                }
+                return Ok(new { token });
             }
-            return Ok(new {token});
+             catch (Exception ex)
+    {
+                return StatusCode(500, new
+                {
+                    error = ex.Message,
+                    innerException = ex.InnerException?.Message
+                });
+            }
         }
 
         
