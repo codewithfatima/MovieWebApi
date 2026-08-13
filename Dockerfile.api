@@ -1,0 +1,32 @@
+# Build Stage
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+
+WORKDIR /src
+
+# Copy API project file
+COPY MovieWebApi/MovieWebApi.csproj MovieWebApi/
+
+# Restore API dependencies
+RUN dotnet restore MovieWebApi/MovieWebApi.csproj
+
+# Copy API source code
+COPY MovieWebApi/ MovieWebApi/
+
+# Publish API
+RUN dotnet publish MovieWebApi/MovieWebApi.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+
+# Run Stage
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+
+WORKDIR /app
+
+COPY --from=build /app/publish .
+
+# Render will send traffic to port 8080
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080
+
+ENTRYPOINT ["dotnet", "MovieWebApi.dll"]
