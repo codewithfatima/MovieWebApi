@@ -7,8 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient("MovieWebApi", client =>
 {
-    //client.BaseAddress = new Uri("https://localhost:7089/api/");
-    client.BaseAddress = new Uri("https://moviewebapi-08g5.onrender.com/api/");
+    client.BaseAddress = new Uri("https://localhost:7089/api/");
+    //client.BaseAddress = new Uri("https://moviewebapi-08g5.onrender.com/api/");
 
 });
 
