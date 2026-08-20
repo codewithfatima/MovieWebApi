@@ -1,13 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MovieWebApi.Mvc.Models;
-using System.Collections.Generic;
+using System.Text;
 using System.Text.Json;
 
 namespace MovieWebApi.Mvc.Controllers
 {
     public class AuthController : Controller
-
-
     {
         private readonly IHttpClientFactory _httpClientFactory;
 
@@ -17,40 +15,147 @@ namespace MovieWebApi.Mvc.Controllers
         }
 
         [HttpGet]
-        public IActionResult Login() { return View(); }
+        public IActionResult Login()
+        {
+            return View();
+        }
 
         [HttpPost]
         public async Task<IActionResult> Login(LoginViewModel model)
         {
-            var client = _httpClientFactory.CreateClient("MovieWebApi");
-            var json = JsonSerializer.Serialize(new { email = model.Email, password = model.Password });
-            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-
-            var response = await client.PostAsync("Auth/login", content);
-
-            if (!response.IsSuccessStatusCode)
+            if (!ModelState.IsValid)
             {
-                ModelState.AddModelError("", "Invalid email or password.");
+                TempData["Error"] = "Please enter a valid email and password.";
                 return View(model);
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(); // take api reply and read its  body as p[lain text 
-            var result = JsonSerializer.Deserialize<Dictionary<string, string>>(responseJson, new JsonSerializerOptions
-            { 
-                PropertyNameCaseInsensitive = true
-            });
-            var token = result["token"];
-
-            Response.Cookies.Append("jwt", token, new CookieOptions
+            try
             {
-                HttpOnly = true,
-                Secure = true,
-                Expires = DateTimeOffset.UtcNow.AddMinutes(30)
-            });
+                var client = _httpClientFactory.CreateClient("MovieWebApi");
 
-            TempData["Success"] = "Login successful.";
-            return RedirectToAction("Index", "Movie");
+                var json = JsonSerializer.Serialize(new
+                {
+                    email = model.Email,
+                    password = model.Password
+                });
+
+                var content = new StringContent(
+                    json,
+                    Encoding.UTF8,
+                    "application/json"
+                );
+
+                Console.WriteLine($"LOGIN: Sending request for {model.Email}");
+
+                var response = await client.PostAsync(
+                    "api/Auth/login",
+                    content
+                );
+
+                var responseJson =
+                    await response.Content.ReadAsStringAsync();
+
+                Console.WriteLine(
+                    $"LOGIN: API returned {(int)response.StatusCode} {response.StatusCode}"
+                );
+
+                Console.WriteLine(
+                    $"LOGIN RESPONSE: {responseJson}"
+                );
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    if (response.StatusCode ==
+                        System.Net.HttpStatusCode.Unauthorized)
+                    {
+                        TempData["Error"] =
+                            "Login failed: Invalid email or password.";
+                    }
+                    else
+                    {
+                        TempData["Error"] =
+                            $"Login failed: API returned {(int)response.StatusCode}.";
+                    }
+
+                    return View(model);
+                }
+
+                var result =
+                    JsonSerializer.Deserialize<Dictionary<string, string>>(
+                        responseJson,
+                        new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        }
+                    );
+
+                if (result == null ||
+                    !result.TryGetValue("token", out var token) ||
+                    string.IsNullOrWhiteSpace(token))
+                {
+                    TempData["Error"] =
+                        "Login failed: API did not return a valid token.";
+
+                    return View(model);
+                }
+
+                Console.WriteLine("=================================");
+                Console.WriteLine("JWT TOKEN RECEIVED: " + !string.IsNullOrWhiteSpace(token));
+                Console.WriteLine("JWT LENGTH: " + token?.Length);
+                Console.WriteLine("HOST: " + Request.Host);
+                Console.WriteLine("HTTPS: " + Request.IsHttps);
+                Console.WriteLine("=================================");
+
+                Response.Cookies.Append(
+           "jwt",
+           token,
+           new CookieOptions
+           {
+               HttpOnly = true,
+               Secure = false,
+               SameSite = SameSiteMode.Lax,
+               Path = "/",
+               Expires = DateTimeOffset.UtcNow.AddMinutes(30)
+           }
+       );
+
+                Console.WriteLine(
+                    $"LOGIN SUCCESS: {model.Email}"
+                );
+
+                TempData["Success"] =
+                    $"Welcome back, {model.Email}! Login successful.";
+
+                return RedirectToAction(
+                    "Index",
+                    "Movie"
+                );
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.WriteLine(
+                    $"LOGIN HTTP ERROR: {ex.Message}"
+                );
+
+                TempData["Error"] =
+                    "Unable to connect to the Movie API. Please try again later.";
+
+                return View(model);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(
+                    $"LOGIN ERROR: {ex}"
+                );
+
+                TempData["Error"] =
+                    "An unexpected error occurred during login.";
+
+                return View(model);
+            }
         }
+
+
         [HttpGet]
         public IActionResult Register()
         {
@@ -59,39 +164,107 @@ namespace MovieWebApi.Mvc.Controllers
 
 
         [HttpPost]
-        
-        public async Task<IActionResult> Register(RegisterViewModel model)
+        public async Task<IActionResult> Register(
+            RegisterViewModel model)
         {
-            var client = _httpClientFactory.CreateClient("MovieWebApi");
-            var json = JsonSerializer.Serialize(new
+            if (!ModelState.IsValid)
             {
-                firstName = model.FirstName,
-                lastName = model.LastName,
-                email = model.Email,
-                password = model.Password
-            });
-            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                TempData["Error"] =
+                    "Please correct the registration form.";
 
-            var response = await client.PostAsync("Auth/register", content);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                ModelState.AddModelError("", "Failed to register user.");
                 return View(model);
             }
-            TempData["Success"] = "Registration successful. Please log in.";
 
-            return RedirectToAction("Login");
+            try
+            {
+                var client =
+                    _httpClientFactory.CreateClient("MovieWebApi");
+
+                var json = JsonSerializer.Serialize(new
+                {
+                    firstName = model.FirstName,
+                    lastName = model.LastName,
+                    email = model.Email,
+                    password = model.Password
+                });
+
+                var content = new StringContent(
+                    json,
+                    Encoding.UTF8,
+                    "application/json"
+                );
+
+                Console.WriteLine(
+                    $"REGISTER: Creating user {model.Email}"
+                );
+
+                var response = await client.PostAsync(
+                    "api/Auth/register",
+                    content
+                );
+
+                var responseJson =
+                    await response.Content.ReadAsStringAsync();
+
+                Console.WriteLine(
+                    $"REGISTER: API returned {(int)response.StatusCode} {response.StatusCode}"
+                );
+
+                Console.WriteLine(
+                    $"REGISTER RESPONSE: {responseJson}"
+                );
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    TempData["Error"] =
+                        $"Registration failed: {responseJson}";
+
+                    return View(model);
+                }
+
+                Console.WriteLine(
+                    $"REGISTER SUCCESS: {model.Email}"
+                );
+
+                TempData["Success"] =
+                    "Registration successful! You can now log in.";
+
+                return RedirectToAction("Login");
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.WriteLine(
+                    $"REGISTER HTTP ERROR: {ex.Message}"
+                );
+
+                TempData["Error"] =
+                    "Unable to connect to the Movie API. Please try again later.";
+
+                return View(model);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(
+                    $"REGISTER ERROR: {ex}"
+                );
+
+                TempData["Error"] =
+                    "An unexpected error occurred during registration.";
+
+                return View(model);
+            }
         }
+
 
         [HttpPost]
         public IActionResult Logout()
         {
             Response.Cookies.Delete("jwt");
+
+            TempData["Success"] =
+                "You have been logged out successfully.";
+
             return RedirectToAction("Login");
         }
-
-        
-
     }
 }

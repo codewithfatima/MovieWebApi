@@ -1,24 +1,22 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
+using MovieWebApi.Data;
 using MovieWebApi.Dtos;
 using MovieWebApi.Interfaces;
-using System.Security.Claims;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using System.Threading.Tasks;
 using System.IdentityModel.Tokens.Jwt;
-using MovieWebApi.Data;
-using Microsoft.AspNetCore.Http.HttpResults;
+using System.Security.Claims;
+using System.Text;
 
 namespace MovieWebApi.Services
 {
-    public class AuthService:IAuthService
+    public class AuthService : IAuthService
     {
-     private readonly UserManager<ApplicationUser> _userManager;
-            private readonly IConfiguration _config;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IConfiguration _config;
 
-        public AuthService(UserManager<ApplicationUser> userManager ,IConfiguration config )
+        public AuthService(
+            UserManager<ApplicationUser> userManager,
+            IConfiguration config)
         {
             _userManager = userManager;
             _config = config;
@@ -31,55 +29,103 @@ namespace MovieWebApi.Services
                 FirstName = dto.FirstName,
                 LastName = dto.LastName,
                 Email = dto.Email,
-                UserName = dto.Email,
-            }; 
+                UserName = dto.Email
+            };
 
-           var result = await _userManager.CreateAsync(user , dto.Password);
+            var result = await _userManager.CreateAsync(user, dto.Password);
+
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(
+                    ", ",
+                    result.Errors.Select(e => e.Description)
+                );
+
+                throw new Exception($"Registration failed: {errors}");
+            }
+
             return result;
         }
 
         public async Task<string?> LoginAsync(LoginDto dto)
         {
-            var loginUser = await _userManager.FindByEmailAsync(dto.Email);
+            var user = await _userManager.FindByEmailAsync(dto.Email);
 
-            if (loginUser == null)
+            if (user == null)
             {
                 return null;
             }
 
-            var isPasswordVaild = await _userManager.CheckPasswordAsync(loginUser , dto.Password);
-            if(!isPasswordVaild )
+            var passwordValid =
+                await _userManager.CheckPasswordAsync(user, dto.Password);
+
+            if (!passwordValid)
             {
                 return null;
             }
 
-            var roles = await _userManager.GetRolesAsync(loginUser);
+            var roles = await _userManager.GetRolesAsync(user);
 
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, loginUser.Id),
-                new Claim(ClaimTypes.Email , loginUser.Email),
+                new Claim(
+                    ClaimTypes.NameIdentifier,
+                    user.Id
+                ),
 
+                new Claim(
+                    ClaimTypes.Email,
+                    user.Email ?? string.Empty
+                )
             };
 
-            foreach(var role in roles)
+            foreach (var role in roles)
             {
-                claims.Add(new Claim(ClaimTypes.Role, role));
+                claims.Add(
+                    new Claim(ClaimTypes.Role, role)
+                );
             }
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var jwtKey = _config["Jwt:Key"];
+
+            if (string.IsNullOrWhiteSpace(jwtKey))
+            {
+                throw new Exception("Jwt:Key is missing.");
+            }
+
+            var issuer = _config["Jwt:Issuer"];
+
+            if (string.IsNullOrWhiteSpace(issuer))
+            {
+                throw new Exception("Jwt:Issuer is missing.");
+            }
+
+            var audience = _config["Jwt:Audience"];
+
+            if (string.IsNullOrWhiteSpace(audience))
+            {
+                throw new Exception("Jwt:Audience is missing.");
+            }
+
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtKey)
+            );
+
+            var credentials = new SigningCredentials(
+                key,
+                SecurityAlgorithms.HmacSha256
+            );
 
             var token = new JwtSecurityToken(
-    issuer: _config["Jwt:Issuer"],
-    audience: _config["Jwt:Audience"],
-    claims: claims,
-    expires: DateTime.UtcNow.AddMinutes(30),
-    signingCredentials: creds
-);
-            return new JwtSecurityTokenHandler().WriteToken(token);
-            //return "temporary-placeholder";
-        }
+                issuer: issuer,
+                audience: audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(30),
+                signingCredentials: credentials
+            );
 
+            return new JwtSecurityTokenHandler()
+                .WriteToken(token);
+        }
     }
 }

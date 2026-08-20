@@ -7,8 +7,8 @@ using System.Security;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-namespace MovieWebApi.Mvc.Controllers
 
+namespace MovieWebApi.Mvc.Controllers
 {
     public class GenreController : Controller
     {
@@ -22,35 +22,60 @@ namespace MovieWebApi.Mvc.Controllers
         public async Task<IActionResult> Index(string? search, int pageNumber = 1, int pageSize = 20)
         {
             var token = Request.Cookies["jwt"];
-            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-            var jwtToken = handler.ReadJwtToken(token);
-            var role = jwtToken.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
-            ViewBag.IsAdmin = role == "Admin";
-
             if (string.IsNullOrEmpty(token))
             {
                 return RedirectToAction("Login", "Auth");
             }
 
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+            var role = jwtToken.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+            ViewBag.IsAdmin = role == "Admin";
+
             var client = _httpClientFactory.CreateClient("MovieWebApi");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-           
-            var response = await client.GetAsync($"Genre?search={search}");
+            var url =
+               $"api/Genre?search={Uri.EscapeDataString(search ?? "")}" +
+               $"&pageNumber={pageNumber}" +
+               $"&pageSize={pageSize}";
+
+     
+
+            var response = await client.GetAsync(url);
 
             if (!response.IsSuccessStatusCode)
             {
-                return Content($"API Error: {response.StatusCode}");
+                var error = await response.Content.ReadAsStringAsync();
 
+                return Content(
+                    $"Genre API ERROR\n\n" +
+                    $"Status: {(int)response.StatusCode} {response.StatusCode}\n\n" +
+                    $"URL: {client.BaseAddress}{url}\n\n" +
+                    $"Response:\n{error}"
+                );
             }
-            
-            var genre = await response.Content.ReadFromJsonAsync<List<GenreViewModel>>();
-            return View(genre);
+
+            var genre =
+                await response.Content.ReadFromJsonAsync<List<GenreViewModel>>();
+
+            return View(genre ?? new List<GenreViewModel>());
+            //var response = await client.GetAsync($"Genre?search={search}");
+
+            //if (!response.IsSuccessStatusCode)
+            //{
+            //    return Content($"API Error: {response.StatusCode}");
+            //}
+
+            //var genre = await response.Content.ReadFromJsonAsync<List<GenreViewModel>>();
+            //return View(genre);
         }
 
         [HttpGet]
         public IActionResult Create()
         {
+            var token = Request.Cookies["jwt"];
+            if (string.IsNullOrEmpty(token)) return RedirectToAction("Login", "Auth");
             return View();
         }
 
@@ -61,37 +86,56 @@ namespace MovieWebApi.Mvc.Controllers
             var client = _httpClientFactory.CreateClient("MovieWebApi");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            var json = JsonSerializer.Serialize(new {name = model.Name });
+            var json = JsonSerializer.Serialize(new { name = model.Name });
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-
-            var response = await client.PostAsync("Genre", content);
-
+            var response = await client.PostAsync("api/Genre", content);
             if (!response.IsSuccessStatusCode)
             {
-                ModelState.AddModelError("", "Failed to create genre.");
+                var error = await response.Content.ReadAsStringAsync();
+
+                ModelState.AddModelError(
+                    "",
+                    $"Failed to create genre: {error}"
+                );
+
                 return View(model);
             }
+
+            TempData["Success"] =
+                "Genre created successfully.";
 
             return RedirectToAction("Index");
         }
 
         [HttpGet]
-        public async Task<IActionResult> Edit(int id )
+        public async Task<IActionResult> Edit(int id)
         {
             var token = Request.Cookies["jwt"];
+            if (string.IsNullOrEmpty(token)) return RedirectToAction("Login", "Auth");
 
             var client = _httpClientFactory.CreateClient("MovieWebApi");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-           
-            var response = await client.GetAsync($"Genre/{id}");
 
-            var genre = await response.Content.ReadFromJsonAsync<GenreViewModel>();
+            var response = await client.GetAsync($"api/Genre/{id}");
 
             if (!response.IsSuccessStatusCode)
             {
-                ModelState.AddModelError("", "Failed to create genre.");
-                return View(genre);
+                var error = await response.Content.ReadAsStringAsync();
+
+                return Content(
+                    $"Genre API ERROR\n\n" +
+                    $"Status: {(int)response.StatusCode} {response.StatusCode}\n\n" +
+                    error
+                );
+            }
+
+            var genre =
+                await response.Content.ReadFromJsonAsync<GenreViewModel>();
+
+            if (genre == null)
+            {
+                return NotFound();
             }
 
             return View(genre);
@@ -104,22 +148,30 @@ namespace MovieWebApi.Mvc.Controllers
 
             if (string.IsNullOrEmpty(token))
             {
-                return RedirectToAction("login ", "Auth");
+                return RedirectToAction("Login", "Auth");
             }
 
             var client = _httpClientFactory.CreateClient("MovieWebApi");
             client.DefaultRequestHeaders.Authorization =
                   new AuthenticationHeaderValue("Bearer", token);
 
-            var response = await client.PutAsJsonAsync($"Genre/{model.Id}", new { name = model.Name });
+            var response = await client.PutAsJsonAsync($"api/Genre/{model.Id}", new { name = model.Name });
 
             if (!response.IsSuccessStatusCode)
             {
-                ModelState.AddModelError("", "Failed to update Gnere");
+                var error = await response.Content.ReadAsStringAsync();
+
+                ModelState.AddModelError(
+                    "",
+                    $"Failed to update Genre: {error}"
+                );
+
                 return View(model);
             }
 
-            TempData["SuccessMessage"] = "Genre updated successfully";
+            TempData["Success"] =
+                "Genre updated successfully.";
+
             return RedirectToAction("Index");
         }
 
@@ -130,19 +182,22 @@ namespace MovieWebApi.Mvc.Controllers
             var client = _httpClientFactory.CreateClient("MovieWebApi");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            var response = await client.DeleteAsync($"Genre/{id}");
+            var response = await client.DeleteAsync($"api/Genre/{id}");
 
             if (!response.IsSuccessStatusCode)
             {
-                ModelState.AddModelError("", "Failed to delete genre.");
+                var error = await response.Content.ReadAsStringAsync();
 
+                TempData["Error"] =
+                    $"Failed to delete genre: {error}";
+
+                return RedirectToAction("Index");
             }
 
-            TempData["SuccessMessage"] = "Genre deleted successfully.";
+            TempData["Success"] =
+                "Genre deleted successfully.";
+
             return RedirectToAction("Index");
         }
-
-
     }
-
 }

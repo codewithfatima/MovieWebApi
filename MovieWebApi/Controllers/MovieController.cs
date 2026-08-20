@@ -39,13 +39,27 @@ namespace MovieWebApi.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<MovieDto>> CreateAsync([FromBody] CreateMovieDto dto )
+        [HttpPost]
+        public async Task<ActionResult<MovieDto>> CreateAsync(
+    [FromBody] CreateMovieDto dto)
         {
-            var createdMovie = await _movieService.CreateAsync(dto);
-            return Ok("Moviee is Created successfully");
+            try
+            {
+                var createdMovie = await _movieService.CreateAsync(dto);
+
+                return Ok(createdMovie);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    error = ex.Message,
+                    innerException = ex.InnerException?.Message
+                });
+            }
         }
 
-        //Task UpdateAsync(int id, UpdateMovieDto updateMovieDto);
+
 
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteAsync(int id)
