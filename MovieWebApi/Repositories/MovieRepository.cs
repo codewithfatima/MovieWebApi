@@ -15,17 +15,25 @@ namespace MovieWebApi.Repositories
             _context = context;
         }
 
-        public async Task<(IEnumerable<Movie> Movies, int TotalCount)> GetAllAsync(string? search = null, int? genreId = null, int pageNumber = 1, int pageSize = 10, int? status = null)
+        public async Task<(IEnumerable<Movie> Movies, int TotalCount)> GetAllAsync(
+     string? search = null,
+     int? genreId = null,
+     int pageNumber = 1,
+     int pageSize = 10,
+     int? status = null)
         {
-            var query = _context.Movies.AsQueryable();
+            var query = _context.Movies.AsNoTracking().AsQueryable();
+
             if (!string.IsNullOrWhiteSpace(search))
             {
                 query = query.Where(m => m.Title.Contains(search));
             }
+
             if (genreId.HasValue)
             {
                 query = query.Where(m => m.GenreId == genreId.Value);
             }
+
             if (status.HasValue)
             {
                 query = query.Where(m => (int)m.Status == status.Value);
@@ -33,12 +41,14 @@ namespace MovieWebApi.Repositories
 
             var totalCount = await query.CountAsync();
 
-            query = query.Skip((pageNumber - 1) * pageSize).Take(pageSize);
-            var movies = await query.ToListAsync();
+            var movies = await query
+                .OrderBy(m => m.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
 
             return (movies, totalCount);
         }
-
         public async Task<Movie?> GetByIdAsync(int id)
             => await _context.Movies.FindAsync(id);
 

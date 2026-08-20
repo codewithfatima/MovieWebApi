@@ -92,7 +92,7 @@ namespace MovieWebApi.Services
             movie.Title = updateMovieDto.Title; 
             movie.Description = updateMovieDto.Description;
             movie.Rating = updateMovieDto.Rating;
-            movie.Status = movie.Status;
+            movie.Status = updateMovieDto.Status;
             movie.ReleaseDate = updateMovieDto.ReleaseDate;
             movie.GenreId = updateMovieDto.GenreId;
 
@@ -112,18 +112,18 @@ namespace MovieWebApi.Services
             }
 
         }
-       
+
         public async Task<MovieDto> DuplicateAsync(int id)
         {
             var movie = await _repository.GetByIdAsync(id);
-            if(movie == null)
+
+            if (movie == null)
             {
                 return null;
             }
 
-            var newMovies = new Movie
+            var newMovie = new Movie
             {
-                Id = movie.Id,
                 Title = movie.Title,
                 Description = movie.Description,
                 Rating = movie.Rating,
@@ -132,20 +132,19 @@ namespace MovieWebApi.Services
                 GenreId = movie.GenreId
             };
 
-            await _repository.AddAsync(movie);
+            await _repository.AddAsync(newMovie);
             await _repository.SaveChangesAsync();
 
             return new MovieDto
             {
-                Id = movie.Id,
-                Title = movie.Title,
-                Description = movie.Description,
-                Rating = movie.Rating,
-                Status = movie.Status,
-                ReleaseDate = movie.ReleaseDate,
-                GenreId = movie.GenreId
+                Id = newMovie.Id,
+                Title = newMovie.Title,
+                Description = newMovie.Description,
+                Rating = newMovie.Rating,
+                Status = newMovie.Status,
+                ReleaseDate = newMovie.ReleaseDate,
+                GenreId = newMovie.GenreId
             };
-            
         }
 
     }

@@ -16,9 +16,10 @@ namespace MovieWebApi.Models
         public string Description { get; set; } = string.Empty;
         public DateTime ReleaseDate { get; set; }
         public int Rating { get; set; }
-        public int GenreId { get; set; }
         public MovieStatus Status { get; set; }
-        public Genre Genre { get; set; } = null;
+
+        public int GenreId { get; set; }
+        public Genre? Genre { get; set; } = null;
 
     }
 }
